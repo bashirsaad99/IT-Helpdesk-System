@@ -1,0 +1,19 @@
+<mxfile host="app.diagrams.net" modified="2026-07-28T00:00:00.000Z" agent="Codex">
+  <diagram id="architecture" name="Application Architecture">
+    <mxGraphModel dx="1000" dy="700" grid="1" gridSize="10" page="1" pageWidth="1169" pageHeight="827">
+      <root>
+        <mxCell id="0"/><mxCell id="1" parent="0"/>
+        <mxCell id="title" value="IT Help Desk System - Application Architecture" style="text;html=1;align=center;fontSize=22;fontStyle=1;fontColor=#172B4D;" vertex="1" parent="1"><mxGeometry x="280" y="45" width="610" height="40" as="geometry"/></mxCell>
+        <mxCell id="client" value="USERS&#xa;Employees • IT Agents • Administrators" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=2;fontSize=14;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="380" y="115" width="400" height="70" as="geometry"/></mxCell>
+        <mxCell id="frontend" value="FRONTEND&#xa;React + JavaScript + HTML5 + CSS3&#xa;Runs in the web browser" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#EFF6FF;strokeColor=#2563EB;strokeWidth=2;fontSize=14;" vertex="1" parent="1"><mxGeometry x="330" y="235" width="500" height="90" as="geometry"/></mxCell>
+        <mxCell id="backend" value="BACKEND API&#xa;PHP Laravel&#xa;Authentication • Validation • Ticket business rules • Reports" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#F0FDF4;strokeColor=#16A34A;strokeWidth=2;fontSize=14;" vertex="1" parent="1"><mxGeometry x="330" y="375" width="500" height="100" as="geometry"/></mxCell>
+        <mxCell id="database" value="DATABASE&#xa;MySQL 9.7&#xa;Managed with DBeaver" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#FFF7ED;strokeColor=#D97706;strokeWidth=2;fontSize=14;" vertex="1" parent="1"><mxGeometry x="190" y="545" width="320" height="95" as="geometry"/></mxCell>
+        <mxCell id="files" value="FILE STORAGE&#xa;Ticket attachments&#xa;Validated paths stored in MySQL" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#F5F3FF;strokeColor=#7C3AED;strokeWidth=2;fontSize=14;" vertex="1" parent="1"><mxGeometry x="650" y="545" width="320" height="95" as="geometry"/></mxCell>
+        <mxCell id="a1" value="HTTPS" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeWidth=2;" edge="1" parent="1" source="client" target="frontend"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="a2" value="REST API / JSON" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeWidth=2;" edge="1" parent="1" source="frontend" target="backend"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="a3" value="SQL / ORM" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeWidth=2;" edge="1" parent="1" source="backend" target="database"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="a4" value="Upload / Download" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeWidth=2;" edge="1" parent="1" source="backend" target="files"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
