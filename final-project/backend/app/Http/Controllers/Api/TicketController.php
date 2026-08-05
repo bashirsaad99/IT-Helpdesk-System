@@ -8,6 +8,7 @@ use App\Models\TicketStatus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 class TicketController extends Controller
 {
@@ -65,16 +66,24 @@ class TicketController extends Controller
                 . Str::upper(Str::random(4));
         } while (Ticket::where('ticket_number', $ticketNumber)->exists());
 
-        $ticket = Ticket::create([
-            'ticket_number' => $ticketNumber,
-            'subject' => $validated['subject'],
-            'description' => $validated['description'],
-            'created_by' => $request->user()->id,
-            'assigned_to' => null,
-            'category_id' => $validated['category_id'],
-            'priority_id' => $validated['priority_id'],
-            'status_id' => $openStatusId,
-        ]);
+        $ticket = DB::transaction(function () use ($request, $validated, $ticketNumber, $openStatusId) {
+            $ticket = Ticket::create([
+                'ticket_number' => $ticketNumber,
+                'subject' => $validated['subject'],
+                'description' => $validated['description'],
+                'created_by' => $request->user()->id,
+                'assigned_to' => null,
+                'category_id' => $validated['category_id'],
+                'priority_id' => $validated['priority_id'],
+                'status_id' => $openStatusId,
+            ]);
+            $ticket->activities()->create([
+                'user_id' => $request->user()->id,
+                'action' => 'created',
+                'description' => 'Ticket created.',
+            ]);
+            return $ticket;
+        });
 
         $ticket->load([
             'creator:id,name,email',
@@ -135,7 +144,23 @@ class TicketController extends Controller
             ],
         ]);
 
-        $ticket->update($validated);
+        DB::transaction(function () use ($ticket, $validated, $request): void {
+            $original = $ticket->only(array_keys($validated));
+            $ticket->update($validated);
+            foreach ($validated as $field => $value) {
+                if ((string) ($original[$field] ?? '') === (string) $value) {
+                    continue;
+                }
+                $ticket->activities()->create([
+                    'user_id' => $request->user()->id,
+                    'action' => 'updated',
+                    'field' => $field,
+                    'old_value' => $original[$field] ?? null,
+                    'new_value' => $value,
+                    'description' => 'Ticket '.$field.' was updated.',
+                ]);
+            }
+        });
 
         $ticket->load([
             'creator:id,name,email',

@@ -55,7 +55,7 @@ Route::middleware('auth:api')->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::middleware('auth:api')->group(function () {
+Route::middleware(['auth:api', 'role:employee'])->group(function () {
     Route::apiResource('tickets', TicketController::class);
 });
 

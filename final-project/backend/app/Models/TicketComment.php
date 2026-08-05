@@ -11,7 +11,13 @@ class TicketComment extends Model
         'ticket_id',
         'user_id',
         'comment',
+        'is_internal',
     ];
+
+    protected function casts(): array
+    {
+        return ['is_internal' => 'boolean'];
+    }
 
     public function ticket(): BelongsTo
     {

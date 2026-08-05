@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Ticket;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TicketCommentController extends Controller
 {
@@ -18,6 +19,7 @@ class TicketCommentController extends Controller
 
         $comments = $ticket->comments()
             ->with('user:id,name,email')
+            ->when($this->role($request) === 'employee', fn ($query) => $query->where('is_internal', false))
             ->get();
 
         return response()->json([
@@ -36,14 +38,33 @@ class TicketCommentController extends Controller
                 'string',
                 'max:5000',
             ],
+            'is_internal' => ['sometimes', 'boolean'],
         ]);
+
+        $isInternal = (bool) ($validated['is_internal'] ?? false);
+        if ($isInternal && $this->role($request) === 'employee') {
+            abort(403, 'Employees cannot create internal notes.');
+        }
 
         $ticket = $this->findAccessibleTicket($request, $ticketId);
 
-        $comment = $ticket->comments()->create([
-            'user_id' => $request->user()->id,
-            'comment' => $validated['comment'],
-        ]);
+        $comment = DB::transaction(function () use ($ticket, $request, $validated, $isInternal) {
+            $comment = $ticket->comments()->create([
+                'user_id' => $request->user()->id,
+                'comment' => $validated['comment'],
+                'is_internal' => $isInternal,
+            ]);
+
+            $ticket->activities()->create([
+                'user_id' => $request->user()->id,
+                'action' => $isInternal ? 'internal_note_added' : 'comment_added',
+                'field' => 'comments',
+                'new_value' => (string) $comment->id,
+                'description' => $isInternal ? 'An internal note was added.' : 'A reply was added.',
+            ]);
+
+            return $comment;
+        });
 
         $comment->load('user:id,name,email');
 
@@ -62,9 +83,7 @@ class TicketCommentController extends Controller
     ): Ticket {
         $user = $request->user();
 
-        $role = is_string($user->role)
-            ? strtolower($user->role)
-            : strtolower($user->role?->name ?? '');
+        $role = $this->role($request);
 
         $query = Ticket::query();
 
@@ -77,5 +96,11 @@ class TicketCommentController extends Controller
         }
 
         return $query->findOrFail($ticketId);
+    }
+
+    private function role(Request $request): string
+    {
+        $role = $request->user()->role;
+        return is_string($role) ? strtolower($role) : strtolower($role?->name ?? '');
     }
 }

@@ -455,3 +455,13 @@
 .modal-done-button:hover {
   background: #1d4ed8;
 }
+.internal-note-option {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-weight: 600;
+}
+
+.internal-note-option input {
+  width: auto;
+}

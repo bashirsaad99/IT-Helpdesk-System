@@ -56,12 +56,14 @@ class Ticket extends Model
     {
         return $this->belongsTo(TicketStatus::class, 'status_id');
     }
+
     public function comments(): HasMany
-{
-    return $this->hasMany(TicketComment::class)->oldest();
-}
-public function activities(): HasMany
-{
-    return $this->hasMany(TicketActivity::class)->latest();
-}
+    {
+        return $this->hasMany(TicketComment::class)->oldest();
+    }
+
+    public function activities(): HasMany
+    {
+        return $this->hasMany(TicketActivity::class)->latest();
+    }
 }

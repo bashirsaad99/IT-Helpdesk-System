@@ -23,6 +23,9 @@ function AdminDashboard() {
 
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
+  const [isInternal, setIsInternal] = useState(false);
+  const [activities, setActivities] = useState([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentSaving, setCommentSaving] = useState(false);
   const [commentError, setCommentError] = useState("");
@@ -161,6 +164,8 @@ function AdminDashboard() {
     setError("");
     setComments([]);
     setNewComment("");
+    setIsInternal(false);
+    setActivities([]);
     setCommentError("");
     setCommentSuccess("");
 
@@ -171,6 +176,24 @@ function AdminDashboard() {
     });
 
     loadComments(ticket.id);
+    loadActivities(ticket.id);
+  }
+
+  async function loadActivities(ticketId) {
+    const token = localStorage.getItem("token");
+    setActivitiesLoading(true);
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/api/tickets/${ticketId}/activities`, {
+        headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Unable to load history.");
+      setActivities(data.activities || []);
+    } catch (requestError) {
+      setCommentError(requestError.message);
+    } finally {
+      setActivitiesLoading(false);
+    }
   }
 
   async function updateTicket(event) {
@@ -221,6 +244,7 @@ function AdminDashboard() {
       setSelectedTicket(data.ticket);
       setSuccessMessage(data.message);
       await loadTickets();
+      await loadActivities(data.ticket.id);
     } catch (requestError) {
       setError(requestError.message || "Unable to update the ticket.");
     } finally {
@@ -254,6 +278,7 @@ function AdminDashboard() {
           },
           body: JSON.stringify({
             comment: newComment.trim(),
+            is_internal: isInternal,
           }),
         },
       );
@@ -277,7 +302,9 @@ function AdminDashboard() {
 
       setComments((currentComments) => [...currentComments, data.comment]);
       setNewComment("");
+      setIsInternal(false);
       setCommentSuccess(data.message);
+      await loadActivities(selectedTicket.id);
     } catch (requestError) {
       setCommentError(requestError.message || "Unable to add the comment.");
     } finally {
@@ -535,8 +562,25 @@ function AdminDashboard() {
                   </button>
                 </form>
 
+                <section className="ticket-activities">
+                  <h3>Status Timeline &amp; Audit Trail</h3>
+                  {activitiesLoading ? <p>Loading history...</p> : activities.length === 0 ? <p>No activity yet.</p> : (
+                    <div className="activities-list">
+                      {activities.map((activity) => (
+                        <article className="activity-card" key={activity.id}>
+                          <div className="activity-header">
+                            <strong>{activity.user?.name || "System"}</strong>
+                            <span>{formatDate(activity.created_at)}</span>
+                          </div>
+                          <p>{activity.description}</p>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </section>
+
                 <section className="ticket-comments">
-                  <h3>Comments</h3>
+                  <h3>Replies &amp; Internal Notes</h3>
 
                   {commentsLoading ? (
                     <p>Loading comments...</p>
@@ -553,7 +597,10 @@ function AdminDashboard() {
                             <span>{formatDate(comment.created_at)}</span>
                           </div>
 
-                          <p>{comment.comment}</p>
+                          <p>
+                            {comment.is_internal && <strong>Internal note: </strong>}
+                            {comment.comment}
+                          </p>
                         </article>
                       ))}
                     </div>
@@ -572,6 +619,15 @@ function AdminDashboard() {
                       required
                     />
 
+                    <label className="internal-note-option">
+                      <input
+                        type="checkbox"
+                        checked={isInternal}
+                        onChange={(event) => setIsInternal(event.target.checked)}
+                      />
+                      Internal note (employees cannot see it)
+                    </label>
+
                     {commentError && (
                       <p className="dashboard-error">{commentError}</p>
                     )}
@@ -581,7 +637,7 @@ function AdminDashboard() {
                     )}
 
                     <button type="submit" disabled={commentSaving}>
-                      {commentSaving ? "Adding..." : "Add Comment"}
+                      {commentSaving ? "Adding..." : isInternal ? "Add Internal Note" : "Add Reply"}
                     </button>
                   </form>
                 </section>
