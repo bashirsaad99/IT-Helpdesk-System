@@ -32,6 +32,7 @@ class TicketActivityController extends Controller
 
         $activities = $ticket->activities()
             ->with('user:id,name,email,role')
+            ->when($user->role === 'employee', fn ($query) => $query->where('action', '!=', 'internal_note_added'))
             ->oldest()
             ->get();
 

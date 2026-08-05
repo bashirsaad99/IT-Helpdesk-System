@@ -15,6 +15,7 @@ function TechnicianDashboard() {
   const [successMessage, setSuccessMessage] = useState("");
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
+  const [isInternal, setIsInternal] = useState(false);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentSaving, setCommentSaving] = useState(false);
   const [commentError, setCommentError] = useState("");
@@ -71,12 +72,12 @@ function TechnicianDashboard() {
     }
   }
 
-  async function loadStatuses() {
+  async function loadStatuses(ticketId = null) {
     const token = localStorage.getItem("token");
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/api/technician/statuses",
+        `http://127.0.0.1:8000/api/technician/statuses${ticketId ? `?ticket_id=${ticketId}` : ""}`,
         {
           headers: {
             Accept: "application/json",
@@ -109,12 +110,14 @@ function TechnicianDashboard() {
     setError("");
     setComments([]);
     setNewComment("");
+    setIsInternal(false);
     setCommentError("");
     setCommentSuccess("");
     setActivities([]);
     setActivityError("");
     loadComments(ticket.id);
     loadActivities(ticket.id);
+    loadStatuses(ticket.id);
   }
 
   async function loadActivities(ticketId) {
@@ -217,6 +220,7 @@ function TechnicianDashboard() {
           },
           body: JSON.stringify({
             comment: newComment.trim(),
+            is_internal: isInternal,
           }),
         },
       );
@@ -240,6 +244,7 @@ function TechnicianDashboard() {
 
       setComments((currentComments) => [...currentComments, data.comment]);
       setNewComment("");
+      setIsInternal(false);
       setCommentSuccess(data.message);
     } catch (requestError) {
       setCommentError(requestError.message || "Unable to add the comment.");
@@ -294,6 +299,7 @@ function TechnicianDashboard() {
       setSuccessMessage(data.message);
       await loadTickets();
       await loadActivities(data.ticket.id);
+      await loadStatuses(data.ticket.id);
     } catch (requestError) {
       setError(requestError.message || "Unable to update the ticket status.");
     } finally {
@@ -466,6 +472,10 @@ function TechnicianDashboard() {
                 >
                   <option value="">Select status</option>
 
+                  <option value={selectedTicket.status_id}>
+                    {selectedTicket.status?.name} (current)
+                  </option>
+
                   {statuses.map((status) => (
                     <option key={status.id} value={status.id}>
                       {status.name}
@@ -513,7 +523,7 @@ function TechnicianDashboard() {
             </section>
 
             <section className="ticket-comments">
-              <h3>Comments</h3>
+              <h3>Replies &amp; Internal Notes</h3>
 
               {commentsLoading ? (
                 <p>Loading comments...</p>
@@ -528,7 +538,10 @@ function TechnicianDashboard() {
                         <span>{formatDate(comment.created_at)}</span>
                       </div>
 
-                      <p>{comment.comment}</p>
+                      <p>
+                        {comment.is_internal && <strong>Internal note: </strong>}
+                        {comment.comment}
+                      </p>
                     </article>
                   ))}
                 </div>
@@ -547,6 +560,15 @@ function TechnicianDashboard() {
                   required
                 />
 
+                <label className="internal-note-option">
+                  <input
+                    type="checkbox"
+                    checked={isInternal}
+                    onChange={(event) => setIsInternal(event.target.checked)}
+                  />
+                  Internal note (employees cannot see it)
+                </label>
+
                 {commentError && (
                   <p className="dashboard-error">{commentError}</p>
                 )}
@@ -556,7 +578,7 @@ function TechnicianDashboard() {
                 )}
 
                 <button type="submit" disabled={commentSaving}>
-                  {commentSaving ? "Adding..." : "Add Comment"}
+                  {commentSaving ? "Adding..." : isInternal ? "Add Internal Note" : "Add Reply"}
                 </button>
               </form>
             </section>

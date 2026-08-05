@@ -40,6 +40,8 @@ function Dashboard() {
   const [commentSaving, setCommentSaving] = useState(false)
   const [commentError, setCommentError] = useState('')
   const [commentSuccess, setCommentSuccess] = useState('')
+  const [activities, setActivities] = useState([])
+  const [activitiesLoading, setActivitiesLoading] = useState(false)
 
   useEffect(() => {
     loadTickets()
@@ -294,7 +296,27 @@ function openTicket(ticket) {
   setNewComment('')
   setCommentError('')
   setCommentSuccess('')
+  setActivities([])
   loadComments(ticket.id)
+  loadActivities(ticket.id)
+}
+
+async function loadActivities(ticketId) {
+  const token = localStorage.getItem('token')
+  setActivitiesLoading(true)
+  try {
+    const response = await fetch(
+      `http://127.0.0.1:8000/api/tickets/${ticketId}/activities`,
+      { headers: { Accept: 'application/json', Authorization: `Bearer ${token}` } },
+    )
+    const data = await response.json()
+    if (!response.ok) throw new Error(data.message || 'Unable to load ticket history.')
+    setActivities(data.activities || [])
+  } catch (requestError) {
+    setCommentError(requestError.message)
+  } finally {
+    setActivitiesLoading(false)
+  }
 }
 
 async function addComment(event) {
@@ -656,6 +678,27 @@ async function addComment(event) {
                     {formatDate(selectedTicket.created_at)}
                   </p>
                 </div>
+
+                <section className="ticket-activities">
+                  <h3>Status Timeline &amp; Ticket History</h3>
+                  {activitiesLoading ? (
+                    <p>Loading history...</p>
+                  ) : activities.length === 0 ? (
+                    <p>No activity recorded yet.</p>
+                  ) : (
+                    <div className="activities-list">
+                      {activities.map((activity) => (
+                        <article className="activity-card" key={activity.id}>
+                          <div className="activity-header">
+                            <strong>{activity.user?.name || 'System'}</strong>
+                            <span>{formatDate(activity.created_at)}</span>
+                          </div>
+                          <p>{activity.description}</p>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </section>
 
                 <section className="ticket-comments">
                   <h3>Comments</h3>

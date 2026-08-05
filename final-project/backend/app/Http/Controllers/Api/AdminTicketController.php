@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Ticket;
+use App\Models\TicketStatus;
+use App\Services\TicketWorkflow;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class AdminTicketController extends Controller
 {
@@ -53,7 +56,8 @@ class AdminTicketController extends Controller
      */
     public function update(
         Request $request,
-        string $id
+        string $id,
+        TicketWorkflow $workflow
     ): JsonResponse {
         $ticket = Ticket::with([
             'assignee:id,name',
@@ -66,7 +70,7 @@ class AdminTicketController extends Controller
                 'sometimes',
                 'nullable',
                 'integer',
-                'exists:users,id',
+                Rule::exists('users', 'id')->where('role', 'technician'),
             ],
             'status_id' => [
                 'sometimes',
@@ -85,7 +89,8 @@ class AdminTicketController extends Controller
         DB::transaction(function () use (
             $request,
             $ticket,
-            $validated
+            $validated,
+            $workflow
         ): void {
             $oldAssignedId = $ticket->assigned_to;
             $oldAssigneeName = $ticket->assignee?->name;
@@ -96,7 +101,30 @@ class AdminTicketController extends Controller
             $oldPriorityId = $ticket->priority_id;
             $oldPriorityName = $ticket->priority?->name;
 
-            $ticket->update($validated);
+            if (array_key_exists('assigned_to', $validated)) {
+                $ticket->assigned_to = $validated['assigned_to'];
+            }
+            if (array_key_exists('priority_id', $validated)) {
+                $ticket->priority_id = $validated['priority_id'];
+            }
+
+            $requestedStatus = isset($validated['status_id'])
+                ? TicketStatus::findOrFail($validated['status_id'])
+                : null;
+
+            if (! $requestedStatus && array_key_exists('assigned_to', $validated)) {
+                if ($validated['assigned_to'] && $oldStatusName === 'Open') {
+                    $requestedStatus = TicketStatus::where('name', 'Assigned')->firstOrFail();
+                } elseif (! $validated['assigned_to'] && $oldStatusName === 'Assigned') {
+                    $requestedStatus = TicketStatus::where('name', 'Open')->firstOrFail();
+                }
+            }
+
+            if ($requestedStatus) {
+                $workflow->changeStatus($ticket, $requestedStatus);
+            }
+
+            $ticket->save();
 
             $ticket->load([
                 'assignee:id,name',
@@ -124,7 +152,7 @@ class AdminTicketController extends Controller
             }
 
             if (
-                array_key_exists('status_id', $validated) &&
+                $requestedStatus &&
                 (int) $oldStatusId !==
                     (int) $ticket->status_id
             ) {
